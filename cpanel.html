@@ -135,7 +135,7 @@
     await fetchGithubData();
 
     if (blacklistCache.includes(pass)) {
-      msg.innerText = "🚫 Password ini diblokir.";
+      msg.innerText = "🚫 Password Ini Diblacklist Oleh, Silahkan Hubungi Owner Untuk Membatalkan Blacklist.";
       return;
     }
 
@@ -144,7 +144,7 @@
       document.getElementById("panelBox").classList.remove("hidden");
       msg.innerText = "";
     } else {
-      msg.innerText = "❌ Password salah atau belum ditambahkan ke database.";
+      msg.innerText = "❌ Password Salah Atau Belum Ditambahkan Ke Database.";
     }
   }
 
