@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: url("https://raw.githubusercontent.com/Riifinity/foto/main/background.jpg") no-repeat center center fixed;
+      background-size: cover;
+      position: relative;
+      font-family: 'Inter', sans-serif;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(0,0,0,0.55);
+      z-index: 0;
+    }
+    .content { position: relative; z-index: 1; }
+    .hidden { display: none; }
+    .glass {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .input-big {
+      width: 90%;
+      max-width: 500px;
+      font-size: 1.1rem;
+      padding: 1rem;
+    }
+  </style>
+</head>
+<body class="text-white flex items-center justify-center min-h-screen p-4">
+
+  <div class="content w-full max-w-3xl">
+
+    <!-- LOGIN ADMIN -->
+    <div id="loginBox" class="glass p-8 rounded-2xl shadow-2xl">
+      <h1 class="text-3xl font-bold mb-6 text-center">🔐 Login Admin</h1>
+      <input id="adminUser" placeholder="Username"
+        class="input-big mb-4 rounded-lg bg-white/20 text-white placeholder-gray-300 focus:ring-2 focus:ring-white mx-auto block">
+      <input id="adminPass" type="password" placeholder="Password"
+        class="input-big mb-4 rounded-lg bg-white/20 text-white placeholder-gray-300 focus:ring-2 focus:ring-white mx-auto block">
+      <button onclick="checkLogin()"
+        class="input-big mx-auto block bg-white/20 hover:bg-white/30 transition-all duration-200 rounded-lg font-bold">Login</button>
+      <p id="loginMsg" class="text-red-400 mt-3 text-center"></p>
+    </div>
+
+    <!-- PANEL ADMIN -->
+    <div id="adminPanel" class="hidden glass p-8 rounded-2xl shadow-2xl mt-8">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">⚙️ Admin Panel</h1>
+        <button onclick="logout()" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-bold">🚪 Logout</button>
+      </div>
+
+      <!-- ADD PASSWORD -->
+      <div class="mb-6 text-center">
+        <h2 class="text-xl font-bold mb-2">➕ Tambah Password</h2>
+        <input id="newPass" type="password" placeholder="Password Baru"
+          class="input-big rounded-lg bg-white/20 text-white placeholder-gray-300 mb-3 mx-auto block">
+        <button onclick="addUser()"
+          class="input-big bg-green-600 hover:bg-green-700 rounded-lg font-bold block mx-auto">Tambah</button>
+      </div>
+
+      <!-- LIST PASSWORD -->
+      <div class="mb-6">
+        <h2 class="text-xl font-bold mb-4">📋 Daftar Password</h2>
+        <div class="overflow-hidden rounded-lg border border-white/20">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-white/20">
+              <tr><th class="p-3">Password</th><th class="p-3">Status</th><th class="p-3">Aksi</th></tr>
+            </thead>
+            <tbody id="allTable" class="divide-y divide-white/20 bg-white/10"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <p id="msg" class="mt-5 text-center font-semibold"></p>
+    </div>
+  </div>
+
+  <script>
+    // --- KONFIG ADMIN ---
+    const ADMIN_USERNAME = "asrori";
+    const ADMIN_PASSWORD = "120907";
+
+    const GITHUB_USER = "Riifinity";
+    const REPO = "Database";
+    const USERS_FILE = "users.json";
+    const BLACKLIST_FILE = "blacklist.json";
+    const TOKEN = "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"; // ganti token
+
+    let logoutTimer;
+
+    function checkLogin() {
+      const user = document.getElementById("adminUser").value.trim();
+      const pass = document.getElementById("adminPass").value.trim();
+
+      if (user === ADMIN_USERNAME && pass === ADMIN_PASSWORD) {
+        localStorage.setItem("adminLoggedIn", "true");
+        localStorage.setItem("lastLogin", Date.now());
+        showPanel();
+      } else {
+        document.getElementById("loginMsg").innerText = "❌ Username atau password salah!";
+      }
+    }
+
+    function showPanel() {
+      document.getElementById("loginBox").classList.add("hidden");
+      document.getElementById("adminPanel").classList.remove("hidden");
+      loadUsers();
+      resetLogoutTimer();
+    }
+
+    function logout() {
+      localStorage.removeItem("adminLoggedIn");
+      localStorage.removeItem("lastLogin");
+      document.getElementById("loginBox").classList.remove("hidden");
+      document.getElementById("adminPanel").classList.add("hidden");
+    }
+
+    window.onload = () => {
+      const loggedIn = localStorage.getItem("adminLoggedIn");
+      const lastLogin = localStorage.getItem("lastLogin");
+      if (loggedIn === "true" && lastLogin) {
+        const diff = Date.now() - parseInt(lastLogin);
+        if (diff < 10 * 60 * 1000) showPanel(); else logout();
+      }
+    };
+
+    function resetLogoutTimer() {
+      clearTimeout(logoutTimer);
+      logoutTimer = setTimeout(() => {
+        alert("⏰ Sesi Anda berakhir, silakan login kembali.");
+        logout();
+      }, 10 * 60 * 1000);
+    }
+
+    document.addEventListener("mousemove", resetLogoutTimer);
+    document.addEventListener("keydown", resetLogoutTimer);
+
+    async function updateFile(fileName, updaterFn) {
+      const url = `https://api.github.com/repos/${GITHUB_USER}/${REPO}/contents/${fileName}`;
+      let res = await fetch(url, { headers: { Authorization: `token ${TOKEN}` } });
+      let data = await res.json();
+
+      const content = atob(data.content);
+      let json = [];
+      try { json = JSON.parse(content); } catch(e) {}
+
+      json = updaterFn(json);
+      const updatedContent = btoa(JSON.stringify(json, null, 2));
+
+      res = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `token ${TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: `Update ${fileName}`,
+          content: updatedContent,
+          sha: data.sha
+        })
+      });
+
+      return res.ok;
+    }
+
+    async function addUser() {
+      const newPass = document.getElementById("newPass").value.trim();
+      if (!newPass) return document.getElementById("msg").innerText = "⚠️ Password tidak boleh kosong.";
+
+      const ok = await updateFile(USERS_FILE, (users) => {
+        if (!users.includes(newPass)) users.push(newPass);
+        return users;
+      });
+
+      document.getElementById("msg").innerText = ok ? `✅ Password baru ditambahkan!` : "❌ Gagal menambahkan password.";
+      if (ok) loadUsers();
+    }
+
+    async function blacklistUser(pass) {
+      const ok1 = await updateFile(USERS_FILE, (users) => users.filter(p => p !== pass));
+      const ok2 = await updateFile(BLACKLIST_FILE, (blacklist) => {
+        if (!blacklist.includes(pass)) blacklist.push(pass);
+        return blacklist;
+      });
+      document.getElementById("msg").innerText = ok1 && ok2 ? `🚫 ${pass} masuk blacklist!` : "❌ Gagal blacklist.";
+      if (ok1 && ok2) loadUsers();
+    }
+
+    async function unblacklistUser(pass) {
+      const ok1 = await updateFile(BLACKLIST_FILE, (blacklist) => blacklist.filter(p => p !== pass));
+      const ok2 = await updateFile(USERS_FILE, (users) => {
+        if (!users.includes(pass)) users.push(pass);
+        return users;
+      });
+      document.getElementById("msg").innerText = ok1 && ok2 ? `✅ ${pass} di-unblacklist!` : "❌ Gagal unblacklist.";
+      if (ok1 && ok2) loadUsers();
+    }
+
+    async function deleteUser(pass, fromBlacklist) {
+      const ok = await updateFile(fromBlacklist ? BLACKLIST_FILE : USERS_FILE, (arr) => arr.filter(p => p !== pass));
+      document.getElementById("msg").innerText = ok ? `🗑️ ${pass} dihapus!` : "❌ Gagal menghapus.";
+      if (ok) loadUsers();
+    }
+
+    async function loadUsers() {
+      const usersUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO}/main/${USERS_FILE}?t=${Date.now()}`;
+      const blackUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${REPO}/main/${BLACKLIST_FILE}?t=${Date.now()}`;
+      try {
+        const [usersRes, blackRes] = await Promise.all([fetch(usersUrl), fetch(blackUrl)]);
+        const users = await usersRes.json();
+        const blacklist = await blackRes.json();
+
+        const table = document.getElementById("allTable");
+        table.innerHTML = "";
+
+        users.forEach(pass => {
+          table.innerHTML += `
+            <tr class="hover:bg-white/20">
+              <td class="p-3 font-bold">${pass}</td>
+              <td class="p-3 text-green-400 font-bold">✅ Aktif</td>
+              <td class="p-3 flex gap-2">
+                <button onclick="blacklistUser('${pass}')" class="bg-yellow-600 hover:bg-yellow-700 px-3 py-1 rounded-lg">🚫</button>
+                <button onclick="deleteUser('${pass}', false)" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg">🗑️</button>
+              </td>
+            </tr>`;
+        });
+
+        blacklist.forEach(pass => {
+          table.innerHTML += `
+            <tr class="hover:bg-white/20">
+              <td class="p-3 font-bold">${pass}</td>
+              <td class="p-3 text-red-400 font-bold">🚫 Blacklist</td>
+              <td class="p-3 flex gap-2">
+                <button onclick="unblacklistUser('${pass}')" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-lg">✅</button>
+                <button onclick="deleteUser('${pass}', true)" class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg">🗑️</button>
+              </td>
+            </tr>`;
+        });
+
+      } catch {
+        document.getElementById("msg").innerText = "❌ Gagal memuat daftar password.";
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pterodactyl Create Panel</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body {
+    font-family: 'Inter', sans-serif;
+    background: url("https://raw.githubusercontent.com/Riifinity/foto/main/background.jpg") no-repeat center center fixed;
+    background-size: cover;
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    top:0; left:0; right:0; bottom:0;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(0,0,0,0.45);
+    z-index: 0;
+  }
+  .content { position: relative; z-index: 1; }
+  .hidden { display: none; }
+  .glass {
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+</style>
+</head>
+<body class="text-white flex items-center justify-center min-h-screen p-4">
+
+<div class="content w-full max-w-2xl mx-auto">
+
+  <!-- LOGIN FORM -->
+  <div id="loginBox" class="glass p-8 rounded-2xl shadow-2xl">
+    <h1 class="text-3xl font-bold mb-6 text-center">🔑 Login</h1>
+    <input id="loginPass" type="password" placeholder="Masukkan Password"
+      class="w-full mb-3 p-3 rounded-lg bg-white/20 text-white placeholder-gray-300 focus:ring-2 focus:ring-white">
+    <button onclick="checkUserLogin()"
+      class="w-full bg-white/20 hover:bg-white/30 p-3 rounded-lg font-bold transition">Login</button>
+    <p id="loginMsg" class="text-red-400 mt-3 text-center"></p>
+  </div>
+
+  <!-- CPANEL FORM -->
+  <div id="panelBox" class="hidden bg-black/70 border border-gray-600 rounded-xl shadow-2xl overflow-hidden mt-8">
+    <div class="p-8 md:p-10">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-white mb-2">Pterodactyl Create Panel</h1>
+        <p class="text-gray-200 font-bold">Website untuk create panel</p>
+      </div>
+
+      <form id="createPanelForm" class="space-y-6">
+        <div>
+          <label for="username" class="block text-sm font-bold mb-2">Username Panel</label>
+          <input type="text" id="username" name="username"
+            class="w-full bg-gray-700/70 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-white"
+            placeholder="Masukkan username..." required>
+        </div>
+
+        <div>
+          <label for="plan" class="block text-sm font-bold mb-2">Pilih Paket</label>
+          <select id="plan" name="plan"
+            class="w-full bg-gray-700/70 border border-gray-600 text-white rounded-lg px-4 py-3 focus:ring-2 focus:ring-white"
+            required>
+            <option value="1024|1024|20">RAM 1GB • Disk 1GB • CPU 20%</option>
+            <option value="2048|2048|40">RAM 2GB • Disk 2GB • CPU 40%</option>
+            <option value="3072|3072|60">RAM 3GB • Disk 3GB • CPU 60%</option>
+            <option value="4096|4096|80">RAM 4GB • Disk 4GB • CPU 80%</option>
+            <option value="5120|5120|100">RAM 5GB • Disk 5GB • CPU 100%</option>
+            <option value="6144|6144|120">RAM 6GB • Disk 6GB • CPU 120%</option>
+            <option value="7168|7168|140">RAM 7GB • Disk 7GB • CPU 140%</option>
+            <option value="8192|8192|160">RAM 8GB • Disk 8GB • CPU 160%</option>
+            <option value="9216|9216|180">RAM 9GB • Disk 9GB • CPU 180%</option>
+            <option value="10240|10240|200">RAM 10GB • Disk 10GB • CPU 200%</option>
+            <option value="0|0|0">RAM Unlimited • Disk Unlimited • CPU Unlimited</option>
+          </select>
+        </div>
+
+        <button type="submit" id="submitButton"
+          class="w-full bg-gray-500/70 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
+          Create Panel
+        </button>
+      </form>
+    </div>
+
+    <div id="responseContainer" class="px-8 md:px-10 pb-8 hidden">
+      <h3 class="text-lg font-bold mb-4 border-t border-gray-600 pt-6">Data Panel Anda</h3>
+      <div id="loadingSpinner" class="flex justify-center items-center py-4 hidden">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+      <div id="responseOutput" class="bg-black/70 rounded-lg p-4 space-y-3"></div>
+      <div id="errorMessage" class="bg-red-900/60 border border-red-500 text-white rounded-lg p-4 text-sm font-bold hidden"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const GITHUB_USER = "Riifinity";
+  const REPO = "Database";
+  const USERS_FILE = "users.json";
+  const BLACKLIST_FILE = "blacklist.json";
+
+  // Cache untuk data users & blacklist
+  let usersCache = [];
+  let blacklistCache = [];
+
+  // --- FETCH DATA TERBARU DARI GITHUB ---
+  async function fetchGithubData() {
+    try {
+      const [usersRes, blacklistRes] = await Promise.all([
+        fetch(`https://raw.githubusercontent.com/${GITHUB_USER}/${REPO}/main/${USERS_FILE}?t=${Date.now()}`),
+        fetch(`https://raw.githubusercontent.com/${GITHUB_USER}/${REPO}/main/${BLACKLIST_FILE}?t=${Date.now()}`)
+      ]);
+      let users = [], blacklist = [];
+      try { users = await usersRes.json(); if(!Array.isArray(users)) users = []; } catch(e){ users = []; }
+      try { blacklist = await blacklistRes.json(); if(!Array.isArray(blacklist)) blacklist = []; } catch(e){ blacklist = []; }
+
+      usersCache = users;
+      blacklistCache = blacklist;
+    } catch (e) {
+      console.error("Gagal fetch data GitHub:", e);
+    }
+  }
+
+  // --- LOGIN DENGAN SYNC LANGSUNG ---
+  async function checkUserLogin() {
+    const pass = document.getElementById("loginPass").value.trim();
+    const msg = document.getElementById("loginMsg");
+
+    // Pastikan selalu fetch data terbaru sebelum login
+    await fetchGithubData();
+
+    if (blacklistCache.includes(pass)) {
+      msg.innerText = "🚫 Password ini diblokir.";
+      return;
+    }
+
+    if (usersCache.includes(pass)) {
+      document.getElementById("loginBox").classList.add("hidden");
+      document.getElementById("panelBox").classList.remove("hidden");
+      msg.innerText = "";
+    } else {
+      msg.innerText = "❌ Password salah atau belum ditambahkan ke database.";
+    }
+  }
+
+  // --- CREATE PANEL ---
+  const form = document.getElementById('createPanelForm');
+  const usernameInput = document.getElementById('username');
+  const submitButton = document.getElementById('submitButton');
+  const responseContainer = document.getElementById('responseContainer');
+  const loadingSpinner = document.getElementById('loadingSpinner');
+  const responseOutput = document.getElementById('responseOutput');
+  const errorMessage = document.getElementById('errorMessage');
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const username = usernameInput.value.trim();
+    const planValue = document.getElementById('plan').value;
+    const [ram, disk, cpu] = planValue.split('|');
+
+    if (!username) { showError('Username tidak boleh kosong.'); return; }
+
+    responseContainer.classList.remove("hidden");
+    loadingSpinner.classList.remove("hidden");
+    responseOutput.classList.add("hidden");
+    errorMessage.classList.add("hidden");
+    submitButton.disabled = true;
+
+    const apiUrl = `https://apikey.sazxofficial.web.id/api/pterodactyl/create?username=${encodeURIComponent(username)}&ram=${ram}&disk=${disk}&cpu=${cpu}&eggid=15&nestid=5&loc=1&domain=riifinityspace.vipstoree.my.id&ptla=ptla_WCwslRvqEzsTTNZ1vvqHSDBUyKiiGzyd1edORbzM7Pn&ptlc=ptlc_rmPUjvqThgJXx0PtKSBhgzp84WDMVOYm23zcCaz4hGN`;
+
+    try {
+      const response = await fetch(apiUrl);
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+      const data = await response.json();
+
+      if (data.status && data.result) {
+        showSuccess(data.result);
+      } else {
+        throw new Error(data.message || 'Format respons API tidak valid.');
+      }
+    } catch (error) {
+      showError(error.message || 'Gagal mengambil data dari API.');
+    } finally {
+      loadingSpinner.classList.add("hidden");
+      submitButton.disabled = false;
+    }
+  });
+
+  function showSuccess(result) {
+    responseOutput.innerHTML = `
+      <div class="flex justify-between bg-gray-800/70 p-3 rounded-md"><span class="font-bold">Username: </span> ${result.username}</div>
+      <div class="flex justify-between bg-gray-800/70 p-3 rounded-md"><span class="font-bold">Password: </span> ${result.password}</div>
+      <div class="flex justify-between bg-gray-800/70 p-3 rounded-md"><span class="font-bold">Login: </span> ${result.domain}</div>
+    `;
+    responseOutput.classList.remove("hidden");
+    errorMessage.classList.add("hidden");
+  }
+
+  function showError(message) {
+    errorMessage.textContent = message;
+    errorMessage.classList.remove("hidden");
+    responseOutput.classList.add("hidden");
+  }
+
+</script>
+</body>
+</html>
