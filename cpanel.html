@@ -38,7 +38,7 @@
   <!-- LOGIN FORM -->
   <div id="loginBox" class="glass p-8 rounded-2xl shadow-2xl">
     <h1 class="text-3xl font-bold mb-6 text-center">🔑 Login</h1>
-    <input id="loginPass" type="password" placeholder="Masukkan Password"
+    <input id="loginPass" type="password" placeholder="Masukkan Username"
       class="w-full mb-3 p-3 rounded-lg bg-white/20 text-white placeholder-gray-300 focus:ring-2 focus:ring-white">
     <button onclick="checkUserLogin()"
       class="w-full bg-white/20 hover:bg-white/30 p-3 rounded-lg font-bold transition">Login</button>
@@ -135,7 +135,7 @@
     await fetchGithubData();
 
     if (blacklistCache.includes(pass)) {
-      msg.innerText = "🚫 Password Ini Diblacklist Oleh, Silahkan Hubungi Owner Untuk Membatalkan Blacklist.";
+      msg.innerText = "🚫 Username Diblacklist, Silahkan Hubungi Owner Untuk Menghapus Username Dari Blacklist.";
       return;
     }
 
