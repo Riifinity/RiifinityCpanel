@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/RiifinitySpace.html" }
+    { "source": "/", "destination": "/tampilan.html" }
   ]
 }
